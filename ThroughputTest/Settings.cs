@@ -1,9 +1,9 @@
 ﻿//---------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.  
+// Copyright (c) Microsoft Corporation. All rights reserved.
 //
-// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
-// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES 
-// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE. 
+// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 //---------------------------------------------------------------------------------
 
 namespace ThroughputTest
@@ -67,6 +67,9 @@ namespace ThroughputTest
         [Option('w', "receive-work-duration", Required = false, HelpText = "Work simulation delay between receive and completion (milliseconds, default 0, no work)")]
         public int WorkDuration { get; private set; } = 0;
 
+        [Option('p', "sdk-sender-pool-size", Required = false, HelpText = "Size of SDK senders pool per concurrent sender (default - 1, single sender)")]
+        public int SdkSenderPoolSize { get; private set; } = 1;
+
         public void PrintSettings()
         {
             Console.WriteLine("Settings:");
@@ -84,6 +87,7 @@ namespace ThroughputTest
             Console.WriteLine("{0}: {1}", "MaxInflightReceives", this.CfgMaxInflightReceives);
             Console.WriteLine("{0}: {1}", "MetricsDisplayFrequency", this.MetricsDisplayFrequency);
             Console.WriteLine("{0}: {1}", "WorkDuration", this.WorkDuration);
+            Console.WriteLine("{0}: {1}", "SdkSenderPoolSize", this.SdkSenderPoolSize);
 
             Console.WriteLine();
         }

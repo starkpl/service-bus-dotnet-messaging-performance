@@ -1,10 +1,12 @@
 //---------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.  
+// Copyright (c) Microsoft Corporation. All rights reserved.
 //
-// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
-// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES 
-// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE. 
+// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 //---------------------------------------------------------------------------------
+
+using System.Linq;
 
 namespace ThroughputTest
 {
@@ -43,7 +45,12 @@ namespace ThroughputTest
         async Task SendTask()
         {
             var client = new ServiceBusClient(this.Settings.ConnectionString);
-            ServiceBusSender sender = client.CreateSender(this.Settings.SendPath);
+            var sendersPool = new List<ServiceBusSender>();
+            for (var i = 0; i < this.Settings.SdkSenderPoolSize; i++)
+            {
+                sendersPool.Add(client.CreateSender(this.Settings.SendPath));
+            }
+
             var payload = new byte[this.Settings.MessageSizeInBytes];
             var semaphore = new DynamicSemaphoreSlim(this.Settings.MaxInflightSends.Value);
             var done = new SemaphoreSlim(1);
@@ -54,18 +61,19 @@ namespace ThroughputTest
             var sw = Stopwatch.StartNew();
 
             // first send will fail out if the cxn string is bad
-            await sender.SendMessageAsync(new ServiceBusMessage(payload) { TimeToLive = TimeSpan.FromMinutes(5) });
+            await sendersPool[0].SendMessageAsync(new ServiceBusMessage(payload) { TimeToLive = TimeSpan.FromMinutes(5) });
 
             for (int j = 0; j < Settings.MessageCount && !this.CancellationToken.IsCancellationRequested; j++)
             {
+                var sender = sendersPool[j % this.Settings.SdkSenderPoolSize];
                 var sendMetrics = new SendMetrics() { Tick = sw.ElapsedTicks };
 
                 var nsec = sw.ElapsedTicks;
                 semaphore.Wait();
                 //await semaphore.WaitAsync().ConfigureAwait(false);
                 sendMetrics.InflightSends = this.Settings.MaxInflightSends.Value - semaphore.CurrentCount;
-                sendMetrics.GateLockDuration100ns = sw.ElapsedTicks - nsec; 
-                                
+                sendMetrics.GateLockDuration100ns = sw.ElapsedTicks - nsec;
+
                 if (Settings.SendDelay > 0)
                 {
                     await Task.Delay(Settings.SendDelay);

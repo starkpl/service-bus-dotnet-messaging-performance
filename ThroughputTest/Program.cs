@@ -1,9 +1,9 @@
 ﻿//---------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.  
+// Copyright (c) Microsoft Corporation. All rights reserved.
 //
-// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
-// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES 
-// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE. 
+// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 //---------------------------------------------------------------------------------
 
 namespace ThroughputTest
@@ -22,9 +22,16 @@ namespace ThroughputTest
                  .WithParsed<Settings>(opts => RunOptionsAndReturnExitCode(opts));
             return result;
         }
-        
+
         static void RunOptionsAndReturnExitCode(Settings settings)
         {
+            if (settings.SdkSenderPoolSize < 1)
+            {
+                Console.WriteLine("--sdk-sender-pool-size must be greater than 0.");
+                result = 1;
+                return;
+            }
+
             ServiceBusConnectionStringProperties cb = ServiceBusConnectionStringProperties.Parse(settings.ConnectionString);
             if (string.IsNullOrWhiteSpace(cb.EntityPath))
             {
@@ -41,8 +48,8 @@ namespace ThroughputTest
                 {
                     settings.SendPath = cb.EntityPath;
                 }
-                
-                settings.ConnectionString = cb.ToString(); 
+
+                settings.ConnectionString = cb.ToString();
             }
             if (settings.ReceivePaths == null || settings.ReceivePaths.Count() == 0)
             {
@@ -58,7 +65,7 @@ namespace ThroughputTest
             };
             app.Run(experiments).Wait();
             Console.WriteLine("Complete");
-            
+
         }
     }
 }
