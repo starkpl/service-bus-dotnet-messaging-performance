@@ -70,6 +70,9 @@ namespace ThroughputTest
         [Option('p', "sdk-sender-pool-size", Required = false, HelpText = "Size of SDK senders pool per concurrent sender (default - 1, single sender)")]
         public int SdkSenderPoolSize { get; private set; } = 1;
 
+        [Option('B', "disable-batch-store-access", Required = false, HelpText = "Should the batch store access be disabled when creating the topic (default - false)")]
+        public bool DisableBatchStoreAccess { get; private set; } = false;
+
         public void PrintSettings()
         {
             Console.WriteLine("Settings:");
@@ -88,6 +91,7 @@ namespace ThroughputTest
             Console.WriteLine("{0}: {1}", "MetricsDisplayFrequency", this.MetricsDisplayFrequency);
             Console.WriteLine("{0}: {1}", "WorkDuration", this.WorkDuration);
             Console.WriteLine("{0}: {1}", "SdkSenderPoolSize", this.SdkSenderPoolSize);
+            Console.WriteLine("{0}: {1}", "DisableBatchStoreAccess", this.DisableBatchStoreAccess);
 
             Console.WriteLine();
         }

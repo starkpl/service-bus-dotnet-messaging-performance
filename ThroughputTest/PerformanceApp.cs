@@ -1,10 +1,14 @@
 //---------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.  
+// Copyright (c) Microsoft Corporation. All rights reserved.
 //
-// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, 
-// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES 
-// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE. 
+// THIS CODE AND INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND,
+// EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 //---------------------------------------------------------------------------------
+
+using Azure;
+using Azure.Messaging.ServiceBus;
+using Azure.Messaging.ServiceBus.Administration;
 
 namespace ThroughputTest
 {
@@ -25,7 +29,7 @@ namespace ThroughputTest
         readonly List<PerformanceTask> tasks;
         private IDisposable sendMetrics;
         private IDisposable receiveMetrics;
-    
+
         public ServiceBusPerformanceApp(Settings settings, Metrics metrics)
         {
             this.settings = settings;
@@ -39,12 +43,14 @@ namespace ThroughputTest
         {
             this.settings.PrintSettings();
 
+            await CreateTopic();
+
             tasks.Add(new ReceiverTask(settings, this.metrics, this.cancellationTokenSource.Token));
             tasks.Add(new SenderTask(settings, this.metrics, this.cancellationTokenSource.Token));
 
             Console.WriteLine("Starting...");
             Console.WriteLine();
-            
+
             long sendTotal = 0, receiveTotal = 0;
             int windowLengthSecs = (int)this.settings.MetricsDisplayFrequency*2;
             if (this.settings.SenderCount > 0)
@@ -112,6 +118,27 @@ namespace ThroughputTest
             this.cancellationTokenSource.Cancel();
             this.tasks.ForEach((t) => t.Close());
             Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        private async Task CreateTopic()
+        {
+            var client = new ServiceBusAdministrationClient(settings.ConnectionString);
+            var topicFactory = new Func<Task>(
+                () => client.CreateTopicAsync(
+                    new CreateTopicOptions(settings.SendPath)
+                    {
+                        EnableBatchedOperations = !settings.DisableBatchStoreAccess
+                    }));
+            try
+            {
+                await topicFactory();
+            }
+            catch (ServiceBusException e) when (
+                e.Reason == ServiceBusFailureReason.MessagingEntityAlreadyExists)
+            {
+                await client.DeleteTopicAsync(settings.SendPath);
+                await topicFactory();
+            }
         }
 
         private Task RunExperiments(IEnumerable<Experiment> experiments, CancellationToken ct)
