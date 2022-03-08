@@ -1,4 +1,59 @@
-﻿# Azure Service Bus Throughput Performance Test
+﻿# SDK senders pooling experiment
+
+The goal of this experiment was to demonstrate Service Bus implicit message batching mechanism. In order to do this, the benchmark was run with two different configurations - with no SDK sender pooling (Incoming Requests < Incoming Messages due to batching) and with a pool of 1.000 SDK senders (Incoming Requests = Incoming Messages).
+
+## Testing environment
+
+- Tests were being run from a Mac OS machine outside of Azure infrastructure (however similar results were observed from Linux AKS nodes inside Azure network).
+- The target Service Bus namespace was a Premium tier with 1 Messaging Unit.
+- The target entity was a single topic with no subscriptions and default configuration (created using Azure Portal).
+
+## Test Results
+
+### No pooling scenario
+
+The test was run with following configuration:
+
+```
+dotnet ThroughputTest.dll -C "$CONN_STR" -S benchmark -s 1 -r 0 -i 100 
+```
+
+Incoming Messages / Incoming Requests metric during the test:
+
+![nopooling_messages.png](../img/nopooling_messages.png)
+
+CPU during the test:
+
+![nopooling_cpu.png](../img/nopooling_cpu.png)
+
+### Pooling scenario
+
+The test was run with following configuration:
+
+```
+dotnet ThroughputTest.dll -C "$CONN_STR" -S benchmark -s 1 -r 0 -i 100 -p 1000 
+```
+
+Incoming Messages / Incoming Requests metric during the test (the charts are overlapping because the values of both metrics are equal): 
+
+![pooling_messages.png](../img/pooling_messages.png)
+
+CPU during the test:
+
+![pooling_cpu.png](../img/pooling_cpu.png)
+
+## Conclusions
+
+When reusing a single SDK sender, our observations led to conclusion that there was some kind of implicit batching happening, either on the Service Bus side or the client side, because the number of Incoming Requests was much lower than the number of Incoming Messages. On the other hand, when pooling a relatively high number of SDK senders, the number of Incoming Requests and Incoming Messages were exactly the same. 
+
+This may suggests that the batching is happening on the client-side, because if it happened on the server side, we would expect that the number of SDK senders on the client side would not affect the level of batching. The other possibility is that the batching is happening on the server side, but only "per topic client" - meaning that the Service Bus does not batch together messages coming from multiple clients.
+
+---
+# Original README content below:
+
+---
+
+# Azure Service Bus Throughput Performance Test
 
 This code sample illustrates the available throughput performance options for Azure Service Bus clients 
 and also allows for running experiments that dynamically adjust some tuning parameters. 
@@ -160,24 +215,25 @@ to complete. The "inflight-receives" option controls how many messages are being
 
 The further options are listed below:
 
-| Parameter                     | Description                                                                   
-|-------------------------------|-------------------------------------------------------------------------------
-|  **-C, --connection-string**  |  **Required**. Connection string                                              
-|  -S, --send-path              |  Send path. Queue or topic name, unless set in connection string EntityPath.  
-|  -R, --receive-paths          |  Receive paths. Mandatory for receiving from topic subscriptions. Must be {topic}/subscriptions/{subscription-name} or {queue-name}
-|  -n, --number-of-messages     |  Number of messages to send (default 1000000)
-|  -b, --message-size-bytes     |  Bytes per message (default 1024)
-|  -f, --frequency-metrics      |  Frequency of metrics display (seconds, default 10s)
-|  -m, --receive-mode           |  Receive mode.'PeekLock' (default) or 'ReceiveAndDelete'
-|  -r, --receiver-count         |  Number of concurrent receivers (default 1)
-|  -e, --prefetch-count         |  Prefetch count (default 0)
-|  -t, --send-batch-count       |  Number of messages per batch (default 0, no batching)
-|  -s, --sender-count           |  Number of concurrent senders (default 1)
-|  -d, --send-delay             |  Delay between sends of any sender (milliseconds, default 0)
-|  -i, --inflight-sends         |  Maximum numbers of concurrent in-flight send operations (default 1)
-|  -j, --inflight-receives      |  Maximum number of concurrent in-flight receive operations per receiver (default 1)
-| -v, --receive-batch-count     |  Max number of messages per batch (default 0, no batching)
-|  -w, --receive-work-duration  |  Work simulation delay between receive and completion (milliseconds, default 0, no work)
+| Parameter                   | Description                                                                                                                       |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------
+| **-C, --connection-string** | **Required**. Connection string                                                                                                   |
+| -S, --send-path             | Send path. Queue or topic name, unless set in connection string EntityPath.                                                       |
+| -R, --receive-paths         | Receive paths. Mandatory for receiving from topic subscriptions. Must be {topic}/subscriptions/{subscription-name} or {queue-name} |
+| -n, --number-of-messages    | Number of messages to send (default 1000000)                                                                                      |
+| -b, --message-size-bytes    | Bytes per message (default 1024)                                                                                                  |
+| -f, --frequency-metrics     | Frequency of metrics display (seconds, default 10s)                                                                               |
+| -m, --receive-mode          | Receive mode.'PeekLock' (default) or 'ReceiveAndDelete'                                                                           |
+| -r, --receiver-count        | Number of concurrent receivers (default 1)                                                                                        |
+| -e, --prefetch-count        | Prefetch count (default 0)                                                                                                        |
+| -t, --send-batch-count      | Number of messages per batch (default 0, no batching)                                                                             |
+| -s, --sender-count          | Number of concurrent senders (default 1)                                                                                          |
+| -d, --send-delay            | Delay between sends of any sender (milliseconds, default 0)                                                                       |
+| -i, --inflight-sends        | Maximum numbers of concurrent in-flight send operations (default 1)                                                               |
+| -j, --inflight-receives     | Maximum number of concurrent in-flight receive operations per receiver (default 1)                                                |
+| -v, --receive-batch-count   | Max number of messages per batch (default 0, no batching)                                                                         |
+| -w, --receive-work-duration | Work simulation delay between receive and completion (milliseconds, default 0, no work)                                           |
+| -p, --sdk-sender-pool-size  | Size of SDK senders pool per concurrent sender (default - 1, single sender)                                                       |
 
 
  
